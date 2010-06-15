@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceListener;
+
+import android.R.string;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
@@ -83,7 +85,8 @@ public class ServersActivity extends Activity {
 					tt.setText("Name: " + o.getServerName());
 				}
 				if (bt != null) {
-					bt.setText("URI: " + o.getServerType());
+					String info = o.getServerInfo().getServer() + o.getServerInfo().getPort();
+					bt.setText("URI: " + info);
 				}
 			}
 			return v;
@@ -92,7 +95,8 @@ public class ServersActivity extends Activity {
 
 		public void onClick(View v) {
 			// gotta get server 
-			
+			LinearLayout ll = (LinearLayout) v.findViewById(R.id.row);
+			ll.removeAllViews();
 			
 		}
 		
@@ -126,7 +130,8 @@ public class ServersActivity extends Activity {
         try{
         	
         	mServers = new ArrayList<Server>(); //don't recount
-        	m_adapter.clear();
+        	
+        	
     		JmDNS jmdns;
     		getApplicationContext();
 			WifiManager wm = (WifiManager) getSystemService(Context.WIFI_SERVICE);
@@ -156,6 +161,7 @@ public class ServersActivity extends Activity {
         public void run() {
         	
             if(mServers != null && mServers.size() > 0){
+            	m_adapter.clear();
             int z  = mServers.size();
                 m_adapter.notifyDataSetChanged();
                 for(int i=0;i<z;i++)
