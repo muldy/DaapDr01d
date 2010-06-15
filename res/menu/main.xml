@@ -1,0 +1,6 @@
+
+ <menu xmlns:android="http://schemas.android.com/apk/res/android">
+ <item android:id="@+id/rescan" android:title="@string/reScan"></item>
+
+<item android:title="@string/quit" android:id="@+id/itemQuit"></item>
+</menu>
