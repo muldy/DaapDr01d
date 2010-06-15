@@ -177,7 +177,7 @@ public class ServersActivity extends Activity {
     	Thread thread =  new Thread(null, viewServers, "MagentoBackground");
         thread.start();
         m_ProgressDialog = ProgressDialog.show(ServersActivity.this,    
-              "Please wait...", "Retrieving data ...", true);
+              "Please wait...", "Searching for servers ...", true);
     }
 
 	public void onCreate(Bundle savedInstanceState) {
