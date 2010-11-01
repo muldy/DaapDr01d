@@ -11,7 +11,7 @@ import android.app.TabActivity;
 
 public class DaapDroid extends TabActivity {
 	
-	
+	private int currentTab=0;
 
 
 	@Override
@@ -19,6 +19,13 @@ public class DaapDroid extends TabActivity {
 
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
+		
+		Bundle b = this.getIntent().getExtras();
+		
+		if (b!=null)
+		{
+			currentTab = b.getInt("currentTab");
+		}
 
 		Resources res = getResources(); // Resource object to get Drawables
 		TabHost tabHost = getTabHost(); // The activity TabHost
@@ -56,7 +63,7 @@ public class DaapDroid extends TabActivity {
 				res.getDrawable(R.drawable.ic_tab_artists)).setContent(intent);
 		tabHost.addTab(spec);
 
-		tabHost.setCurrentTab(0);
+		tabHost.setCurrentTab(currentTab);
 
 		
 

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="lib" path="/home/maf/Dropbox/workspace/jmdns-3.1.6/lib/jmdns.jar"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="gen"/>
 	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
+	<classpathentry kind="lib" path="/home/muldy/Dropbox/workspace/lib/jdom/build/jdom.jar"/>
+	<classpathentry kind="lib" path="/home/muldy/Dropbox/workspace/lib/glazedlists-1.8.0_java15.jar"/>
+	<classpathentry kind="lib" path="/home/muldy/Dropbox/workspace/lib/jmdns-3.1.3/lib/jmdns.jar" sourcepath="/home/muldy/Dropbox/workspace/lib/jmdns-3.2.1/src"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -19,9 +19,8 @@ public final class R {
     public static final class id {
         public static final int bottomtext=0x7f060003;
         public static final int icon=0x7f060000;
-        public static final int itemQuit=0x7f060006;
-        public static final int list=0x7f060004;
-        public static final int rescan=0x7f060005;
+        public static final int itemQuit=0x7f060005;
+        public static final int rescan=0x7f060004;
         public static final int row=0x7f060001;
         public static final int toptext=0x7f060002;
     }

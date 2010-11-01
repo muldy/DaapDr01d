@@ -8,8 +8,10 @@ import javax.jmdns.ServiceListener;
 
 import android.R.string;
 import android.app.Activity;
+import android.app.ListActivity;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Bundle;
@@ -20,14 +22,17 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 
-public class ServersActivity extends Activity {
+public class ServersActivity extends ListActivity {
 	
 	private static final String TAG = "DaapDr01d";
 	private static ArrayList<Server> mServers =null;
@@ -55,53 +60,7 @@ public class ServersActivity extends Activity {
 	
 	
 	
-	class ServerAdapter extends ArrayAdapter<Server> implements android.view.View.OnClickListener {
-		
-		private ArrayList<Server> items;
-
-		public ServerAdapter(Context context, int textViewResourceId,
-				ArrayList<Server> items) {
-			super(context, textViewResourceId, items);
-			this.items = items;
-		}
-
-		
-		@Override
-		public View getView(int position, View convertView, ViewGroup parent) {
-			View v = convertView;
-			if (v == null) {
-				LayoutInflater vi = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-				v = vi.inflate(R.layout.row, null);
-			}
-			Server o = items.get(position);
-			if (o != null) {
-				LinearLayout ll = (LinearLayout) v.findViewById(R.id.row);
-				
-				ll.setOnClickListener(this);
-				
-				TextView tt = (TextView) v.findViewById(R.id.toptext);
-				TextView bt = (TextView) v.findViewById(R.id.bottomtext);
-				if (tt != null) {
-					tt.setText("Name: " + o.getServerName());
-				}
-				if (bt != null) {
-					String info = o.getServerInfo().getServer() + o.getServerInfo().getPort();
-					bt.setText("URI: " + info);
-				}
-			}
-			return v;
-		}
-
-
-		public void onClick(View v) {
-			// gotta get server 
-			LinearLayout ll = (LinearLayout) v.findViewById(R.id.row);
-			ll.removeAllViews();
-			
-		}
-		
-		
-	}
+	
 
 	static class SampleListener implements ServiceListener {
 
@@ -186,7 +145,7 @@ public class ServersActivity extends Activity {
 		
 		mServers = new ArrayList<Server>();
 		this.m_adapter = new ServerAdapter(this, R.layout.row, mServers);
-        ListView lv = (ListView) findViewById(R.id.list);
+        ListView lv = getListView();//(ListView) findViewById(R.id.list);
         lv.setAdapter(this.m_adapter);
         
         viewServers = new Runnable(){
@@ -194,7 +153,44 @@ public class ServersActivity extends Activity {
             	getServers();
             }
         };
+        
+        
         scanServers();
+        
+        this.getListView().setOnItemClickListener(new OnItemClickListener() {
+
+			public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+					long arg3) {
+				// TODO Auto-generated method stub
+				Server s = m_adapter.getItem(arg2);
+				
+				Context context = getApplicationContext();
+				String serverAddress = (s.getServerInfo().getServer());
+				CharSequence text = (serverAddress).substring(0, serverAddress.length()-1) 
+					+":"+ 
+					s.getServerInfo().getPort();
+				int duration = Toast.LENGTH_LONG;
+
+				Toast toast = Toast.makeText(context, text, duration);
+				toast.show();
+				
+				//connect here and do pretty things
+				Intent i = new Intent(context,
+						SongsActivity.class);
+				
+				Bundle bdl = new Bundle();
+				bdl.putString("serverAdrs", serverAddress);
+				bdl.putInt("serverPort", s.getServerInfo().getPort());
+				
+				i.putExtras(bdl);
+				startActivity(i);
+				
+				
+
+				
+				
+			}
+		});
         
 
 		

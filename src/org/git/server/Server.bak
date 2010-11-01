@@ -1,0 +1,362 @@
+/*
+ * Created on Aug 29, 2003
+ *
+ * To change the template for this generated file go to
+ * Window>Preferences>Java>Code Generation>Code and Comments
+ */
+package org.git.server;
+
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Set;
+
+import org.git.GITProperties;
+import org.git.GITUtils;
+import org.git.client.BasicStatusObject;
+import org.git.client.Host;
+import org.git.client.local.LocalHost;
+import org.git.client.local.LocalSong;
+import org.git.client.swing.GetItTogether;
+import org.git.client.swing.SwingWorker;
+
+import de.kapsi.net.daap.DaapAuthenticator;
+import de.kapsi.net.daap.DaapFilter;
+import de.kapsi.net.daap.DaapServer;
+import de.kapsi.net.daap.DaapServerFactory;
+import de.kapsi.net.daap.DaapStreamSource;
+import de.kapsi.net.daap.Database;
+import de.kapsi.net.daap.Library;
+import de.kapsi.net.daap.Playlist;
+import de.kapsi.net.daap.SimpleConfig;
+import de.kapsi.net.daap.Song;
+import de.kapsi.net.daap.Transaction;
+
+
+/**
+ * @author jbarnett
+ *
+ * To change the template for this generated type comment go to
+ * Window>Preferences>Java>Code Generation>Code and Comments
+ */
+public final class Server extends BasicStatusObject implements DaapAuthenticator, DaapStreamSource, DaapFilter{
+	
+    public static final int STATUS_NOT_RUNNING = 0;
+    public static final int STATUS_RUNNING = 1;
+    
+    private static final Server INSTANCE = new Server();
+	private Hashtable hash;
+	private Library library;
+	private Database database;
+  	private DaapServer server;
+  	private Playlist playlist;
+	private ArrayList loadedHosts;
+  
+  	public static Server instance() {
+  	    return INSTANCE;
+  	}
+  	
+  public synchronized void start() {
+      if (!GITProperties.shareEnabled) {
+          System.out.println("sharing is disabled");
+          return;
+      }
+      if (isServerRunning())
+          return;
+      
+      try {
+      InetAddress addr = GITUtils.getLocalInetAddress();
+      if (addr == null || addr.isLoopbackAddress())
+      {
+          System.out.println("problem with localhost address");
+      }
+      
+      library = new Library(GITProperties.shareName);
+      database = new Database(GITProperties.shareName);
+      Playlist playlist = new Playlist("Recent");
+      Transaction txn = library.open(false);
+      playlist.setSmartPlaylist(txn, true);
+      library.add(txn, database);
+      database.add(txn, playlist);
+      txn.commit();
+      
+      SimpleConfig config = new SimpleConfig(GITProperties.sharePort);
+      config.setMaxConnections(GITProperties.shareLimit);
+      config.setInetSocketAddress(new InetSocketAddress(InetAddress.getLocalHost(), GITProperties.sharePort));
+      
+      server = DaapServerFactory.createBIOServer(library, config);
+      server.setAuthenticator(this);
+      server.setStreamSource(this);
+      server.setFilter(this);
+      server.bind();
+      
+      hash = new Hashtable();
+      Thread serverThread = new Thread(server, "DaapServerThread");
+      serverThread.setDaemon(true);
+      serverThread.start();
+      
+      // register this server with Rendezvous
+      RendezvousManager.instance().registerServer();
+      
+      setStatus(Server.STATUS_RUNNING);
+      } catch (IOException io) {
+          stop();
+          io.printStackTrace();
+      }
+  } 
+
+  // don't use.
+  public void init() throws Exception {
+	    if (!GITProperties.shareEnabled) {
+	        System.out.println("sharing is disabled");
+	        return;
+	    }
+	    
+	    InetAddress addr = InetAddress.getLocalHost();
+
+	    Enumeration e = NetworkInterface.getNetworkInterfaces();
+			while (e.hasMoreElements()) {
+				NetworkInterface intf = (NetworkInterface)e.nextElement();
+				Enumeration addrs = intf.getInetAddresses();
+				while (addrs.hasMoreElements()) {
+					addr = (InetAddress)addrs.nextElement();
+					if (!addr.getHostAddress().equals("127.0.0.1") &&
+							!addr.getHostAddress().equals("0.0.0.0") &&
+							addr.getHostAddress().matches("[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*")) {
+	    				break;
+					}
+				}
+			}
+			
+      library = new Library(GITProperties.shareName);
+      database = new Database(GITProperties.shareName);
+      
+      Playlist playlist = new Playlist("Recent");
+      Transaction txn = library.open(false);
+      
+      playlist.setSmartPlaylist(txn, true);
+      
+      
+      library.add(txn, database);
+          
+      database.add(txn, playlist);
+      // note: can use txn multiple times (ie to add multiple playlists) but commit only once
+      txn.commit();
+      
+      
+      // add songs
+      
+//      Playlist masterPlaylist = database.getMasterPlaylist();
+      /*
+      
+      de.kapsi.net.daap.Song song = new Song("The Only One " );
+          song.setArtist("American Analog Set");
+          song.setAlbum("Know by Heart");
+          song.setGenre("Rock/Pop");
+          song.setTrackNumber(2);
+          song.setSize((int) 6002857);
+          song.setBitrate(128);
+          song.setTime(377000); // milli seconds
+          song.setUserRating(2);
+//          song.setDataUrl("/Users/wooo/1.mp3");
+      
+      System.out.println(song.toString());
+      
+      hash.put(song.toString(), "/Users/wooo/1.mp3");
+      txn = library.open(false);
+      playlist.add(txn,song);
+      txn.commit();
+      */
+      //server.update();
+      
+      SimpleConfig config = new SimpleConfig(GITProperties.sharePort);
+      config.setMaxConnections(GITProperties.shareLimit);
+
+      server = DaapServerFactory.createBIOServer(library, config);
+      server.setAuthenticator(this);
+      server.setStreamSource(this);
+      server.bind();
+      
+      hash = new Hashtable();
+      Thread serverThread = new Thread(server, "DaapServerThread");
+      serverThread.setDaemon(true);
+      serverThread.start();
+      
+	    
+	    System.out.println("done with Server.init()");
+	}
+	
+  	public synchronized void stop() {
+  	    if (server != null)
+  	        server.stop();
+  	    if (hash != null)
+  	        hash.clear();
+  	    
+  	    // unregister this server with Rendezvous
+  	    RendezvousManager.instance().unregisterServer();
+  	    
+  	    server = null;
+  	    hash = null;
+  	    playlist = null;
+  	    database = null;
+  	    
+  	    setStatus(Server.STATUS_NOT_RUNNING);
+  	}
+  
+  	public synchronized void restart() {
+  	    if (isServerRunning())
+  	        server.stop();
+  	    
+  	    start();
+  	}
+  	
+  	public boolean isServerRunning() {
+  	    if (server != null)
+  	        return server.isRunning();
+  	    else
+  	        return false;
+  	}
+  	
+  	public synchronized void update() {
+  	    if (isServerRunning())
+  	    {
+  	        Transaction txn = library.open(false);
+  	        library.setName(txn, GITProperties.shareName);
+  	        database.setName(txn, GITProperties.shareName);
+  	        txn.commit();
+  	        server.update();
+  	        
+  	        // update this server with Rendezvous
+  	        RendezvousManager.instance().update();
+  	    }
+  	}
+  	
+	public static void createPlaylist(String name, org.git.client.Song song) {
+//	    Playlist list = new Playlist(name);
+	    
+//      Transaction txn = library.open(false);
+      
+//      list.setSmartPlaylist(txn, false);
+      
+//      database.add(txn, list);
+      
+//      txn.commit();
+      
+      
+	}
+	
+	public synchronized void addSongs(Collection songs) {
+	    if (!GITProperties.shareEnabled) {
+	        System.out.println("Sharing disabled.  Doing nothing");
+	        return;
+	    }
+	    if (server == null || !server.isRunning()) {
+	        System.out.println("Server isn't running.  doing nothing");
+	        return;
+	    }
+	    
+	    Transaction txn = library.open(false);
+	    org.git.client.local.LocalSong song;
+	    Iterator i = songs.iterator();
+	    while (i.hasNext()) {
+	        try {
+	            song = (org.git.client.local.LocalSong) i.next();
+	        } catch (ClassCastException e) {
+	            System.err.println("Server.addSongs(): Can't Share song because it is not a local song!");
+	           continue;
+	        }
+	        de.kapsi.net.daap.Song kapsiSong = serveSong(song);
+	        kapsiSong.itemId.setValue(song.id);
+	        kapsiSong.setDataUrl(song.getPath());
+	        System.out.println(song.getPath());
+	        System.out.println(kapsiSong.getDataUrl());
+	        hash.put(new Integer(song.id), kapsiSong);
+	        database.getMasterPlaylist().add(txn, kapsiSong);
+	    }
+	    txn.commit();
+	    System.out.println("Serving up "+database.getMasterPlaylist().size() + "songs.");
+	    server.update();
+	}
+	
+	public synchronized void  removeSongs(Collection songs) {
+	    if (!GITProperties.shareEnabled) {
+	        System.out.println("Sharing disabled.  Doing nothing");
+	        return;
+	    }
+	    if (server == null || !server.isRunning()) {
+	        System.out.println("Server isn't running.  doing nothing");
+	        return;
+	    }
+	    Transaction txn = library.open(false);
+	    Iterator i = songs.iterator();
+	    while (i.hasNext()) {
+	        LocalSong s = (LocalSong)i.next();
+	        de.kapsi.net.daap.Song kapsiSong = (de.kapsi.net.daap.Song) hash.remove(new Integer(s.id));
+	        database.getMasterPlaylist().remove(txn,kapsiSong);
+	    }
+	    txn.commit();
+	}
+
+	private static de.kapsi.net.daap.Song serveSong(org.git.client.local.LocalSong song) {
+	  de.kapsi.net.daap.Song servedSong = new de.kapsi.net.daap.Song(song.getName());
+      servedSong.setArtist(song.getArtist());
+      servedSong.setAlbum(song.getAlbum());
+      servedSong.setGenre(song.getGenre());
+      servedSong.setTrackNumber(song.getTrack());
+      servedSong.setSize(song.getSize());
+      servedSong.setBitrate(128); //FIXME: store and return the correct bitrate!
+      servedSong.setTime(song.getTime()); // FIXME: make sure this time is in milli seconds
+      servedSong.setUserRating(3); //FIXME: store and return the user rating
+      servedSong.setCompilation(song.compilation);
+      servedSong.setFormat(song.getFormat());
+//      servedSong.setDataUrl(((LocalSong)song).getPath()); // use this for streamed files...
+//      System.out.println("serveSong returning " + servedSong.toString());
+      return servedSong;
+  }
+
+  public boolean requiresAuthentication() {
+      return GITProperties.sharePasswordRequired;
+  }
+
+  public boolean authenticate(String username, String password) {
+      return password.equals(GITProperties.sharePassword);
+  }
+
+  public FileInputStream getSource(de.kapsi.net.daap.Song song) throws IOException {
+      System.out.println("getting source...");
+      
+      File file = new File(song.getDataUrl());
+      
+      if (file != null && file.isFile()) {
+          return new FileInputStream(file);
+      } else {
+          System.out.println("Couldn't get song file source!");
+          return null;
+      }
+  }
+
+/* (non-Javadoc)
+ * @see de.kapsi.net.daap.DaapFilter#accept(java.net.InetAddress)
+ */
+public boolean accept(InetAddress address) {
+    if (GITUtils.isCloseIP(address))
+        return true;
+    if (address.equals(GITProperties.getSpecialFriend()))
+    {
+        System.out.println("Special friend connected from "+address.getHostAddress()+"!");
+        return true;
+    }
+    else
+        return false;
+}
+
+}
